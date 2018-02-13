@@ -1,0 +1,86 @@
+#:kivy 1.0
+# MIT License
+
+# Copyright (c) 2018 Martin Klingensmith
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+<Controller>:
+	ctrl: tc
+	
+    BoxLayout:
+        orientation: 'horizontal'
+		BoxLayout:
+			id: tc		
+			orientation: 'vertical'
+			BoxLayout:
+				orientation: 'horizontal'
+				Label:
+					text: root.temp_text
+					markup: True
+				Label:
+					text: '[b][size=30]TEMP'
+					markup: True
+			BoxLayout:
+				orientation: 'horizontal'
+				Label:
+					id: label_set
+					text: root.setpoint_text
+					markup: True
+				Label:
+					text: '[b][size=30]SET'
+					markup: True
+			Button:
+                id: b_control_button
+				text: root.control_text
+				markup: True
+                on_press: root.btn_control()
+			BoxLayout:
+				orientation: 'horizontal'
+				Button:
+					id: btn_up
+					text: '[b][size=30]Up'
+					markup: True
+					on_press: root.btn_up()
+				Button:
+					id: btn_down
+					text: '[b][size=30]Down'
+					markup: True
+					on_press: root.btn_down()
+
+
+		BoxLayout:
+			orientation: 'vertical'
+			Button:
+				id: b_e
+				text: root.enable_text
+				markup: True
+				on_press: root.btn_enable()
+            Label:
+                text: root.hlt_temp_text
+                markup: True
+            Label:
+                text: root.mash_temp_text
+                markup: True
+            Label:
+                text: root.hlt_pwm_text
+                markup: True
+
+
