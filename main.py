@@ -31,7 +31,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
 from bcontrol import *
-import urllib2
+#import urllib2
 
 class Controller(FloatLayout):
     ctrl = ObjectProperty(None)
@@ -114,25 +114,25 @@ class Controller(FloatLayout):
     def update(self,dt):            
         self.hlt_temp_text = 'HLT Temp ' + "%3.1f" % self.bc.hlt + ' F'
         self.mash_temp_text = 'Mash Temp ' + "%3.1f" % self.bc.mash_tun + ' F'
-        self.hlt_pwm_text = 'HLT PWM ' + "%3.0f" % self.bc.hlt_pid.dc + '%'
+        self.hlt_pwm_text = 'HLT PWM ' + '%'
         
     def update_controller(self,dt):
         self.bc.read_temp_sensor()
         if self.control == 'HLT':
             self.update_temp_display(self.bc.hlt)
-            self.bc.hlt_pid.update(self.setpoint,self.bc.hlt,self.bc.hlt)
-            print ' HLT MODE'
+            #self.bc.hlt_pid.update(self.setpoint,self.bc.hlt,self.bc.hlt)
+            print(' HLT MODE')
         if self.control == 'MASH':
             self.update_temp_display(self.bc.mash_tun)
-            self.bc.hlt_pid.update(self.setpoint,self.bc.mash_tun,self.bc.hlt)
-            print ' MASH MODE'
+            #self.bc.hlt_pid.update(self.setpoint,self.bc.mash_tun,self.bc.hlt)
+            print (' MASH MODE')
         if self.control == 'BOIL':
             self.update_temp_display()
-            self.bc.pwm_boil.ChangeDutyCycle(self.pwm)
-            print ' BOIL MODE'
+            #self.bc.pwm_boil.ChangeDutyCycle(self.pwm)
+            print (' BOIL MODE')
         if self.control == 'COOL':
             self.update_temp_display(self.bc.htexch)
-            print ' COOL MODE'
+            print (' COOL MODE')
     
     
     # button UP. can be PWM or temperature depending on mode
@@ -140,11 +140,11 @@ class Controller(FloatLayout):
         if self.control == 'HLT' or self.control == 'MASH':
             if (self.setpoint < 220.0):
                 self.setpoint = self.setpoint + 0.5
-                print "button down pressed. self.setpoint = %2.1f" % self.setpoint
+                print ("button down pressed. self.setpoint = %2.1f" % self.setpoint)
         elif self.control == 'BOIL':
             if (self.pwm < 100.0):
                 self.pwm = self.pwm + 2.0
-                print "button up pressed. self.pwm = %2.0f" % self.pwm
+                print ("button up pressed. self.pwm = %2.0f" % self.pwm)
         else:
             pass
         self.update_setpoint_display()
@@ -154,11 +154,11 @@ class Controller(FloatLayout):
         if self.control == 'HLT' or self.control == 'MASH':
             if (self.setpoint > 0.0):
                 self.setpoint = self.setpoint - 0.5
-                print "button down pressed. self.setpoint = %2.1f" % self.setpoint
+                print ("button down pressed. self.setpoint = %2.1f" % self.setpoint)
         elif self.control == 'BOIL':
             if (self.pwm > 0.0):
                 self.pwm = self.pwm - 2.0
-                print "button down pressed. self.pwm = %2.0f" % self.pwm
+                print ("button down pressed. self.pwm = %2.0f" % self.pwm)
         else:
             pass
         self.update_setpoint_display()
@@ -168,25 +168,20 @@ class Controller(FloatLayout):
         if self.control == 'HLT':
             self.update_control_text('MASH')
             self.bc.enable_heater_hlt()
-            self.bc.hlt_pid.reset()
-            self.bc.pwm_boil.ChangeDutyCycle(0)
+
         elif self.control == 'MASH':
             self.update_control_text('BOIL')
             self.bc.enable_heater_boil()
-            self.bc.pwm_hlt.ChangeDutyCycle(0)
         elif self.control == 'BOIL':
             self.update_control_text('COOL')
             self.bc.disable_heaters()
-            self.bc.pwm_hlt.ChangeDutyCycle(0)
-            self.bc.pwm_boil.ChangeDutyCycle(0)
         else:
             self.update_control_text('HLT')
             self.bc.enable_heater_hlt()
-            self.bc.hlt_pid.reset()
-            self.bc.pwm_boil.ChangeDutyCycle(0)
+
         
     def btn_enable(self):
-        if self.enabled <> True:
+        if self.enabled == False:
             self.enabled = True
         else:
             self.enabled = False
