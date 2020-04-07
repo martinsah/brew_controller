@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # MIT License
 
@@ -31,7 +31,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
 from bcontrol import *
-#import urllib2
+import paho.mqtt.subscribe as subscribe
 
 class Controller(FloatLayout):
     ctrl = ObjectProperty(None)
@@ -46,10 +46,16 @@ class Controller(FloatLayout):
     hlt_temp_text = StringProperty()
     mash_temp_text = StringProperty()
     hlt_pwm_text = StringProperty()
+    boil_pwm_text = StringProperty()
     
     def __init__(self, **kwargs):
         super(Controller,self).__init__(**kwargs)
 
+        if sys.stdout.isatty():
+            print('Running in an interactive shell')
+        print('Thread id ')
+        print(threading.get_ident())
+            
         # init default values
         self.setpoint = 155.0
         self.temperature = 0.0
@@ -57,7 +63,9 @@ class Controller(FloatLayout):
         self.sensor = 0.0
         self.heater = 0.0
         self.pwm = 100.0
-
+        self.hlt_sensor_topic = "adc/2"
+        self.mash_sensor_topic = "adc/1"
+        
         # brewery control object
         self.bc = bcontrol()
         self.bc.init_temp_sensors()
@@ -70,6 +78,7 @@ class Controller(FloatLayout):
         self.hlt_temp_text = ''
         self.mash_temp_text = ''
         self.hlt_pwm_text = ''
+        self.boil_pwm_text = ''
         # init default values(derivatives)
         self.sensor_text = self.fmt_btn_text + 'Sensor HLT'
         self.heater_text = self.fmt_btn_text + 'Heater HLT'
@@ -114,61 +123,59 @@ class Controller(FloatLayout):
     def update(self,dt):            
         self.hlt_temp_text = 'HLT Temp ' + "%3.1f" % self.bc.hlt + ' F'
         self.mash_temp_text = 'Mash Temp ' + "%3.1f" % self.bc.mash_tun + ' F'
-        self.hlt_pwm_text = 'HLT PWM ' + '%'
+        self.hlt_pwm_text = 'HLT PWM ' + "%3.1f" % (self.bc.pwm1*100.) + '%'
+        self.boil_pwm_text = 'BOIL PWM ' + "%3.1f" % (self.bc.pwm2*100.) + '%'
+        if self.bc.rotenc_input!=0:
+            self.btn_vec(self.bc.rotenc_input)
+            self.bc.rotenc_input = 0.
         
     def update_controller(self,dt):
         self.bc.read_temp_sensor()
         if self.control == 'HLT':
             self.update_temp_display(self.bc.hlt)
-            #self.bc.hlt_pid.update(self.setpoint,self.bc.hlt,self.bc.hlt)
-            print(' HLT MODE')
+            self.bc.pid_set_sensor_source(self.hlt_sensor_topic)
         if self.control == 'MASH':
+            self.bc.pid_set_sensor_source(self.mash_sensor_topic)
             self.update_temp_display(self.bc.mash_tun)
-            #self.bc.hlt_pid.update(self.setpoint,self.bc.mash_tun,self.bc.hlt)
-            print (' MASH MODE')
         if self.control == 'BOIL':
             self.update_temp_display()
-            #self.bc.pwm_boil.ChangeDutyCycle(self.pwm)
-            print (' BOIL MODE')
         if self.control == 'COOL':
             self.update_temp_display(self.bc.htexch)
-            print (' COOL MODE')
     
-    
-    # button UP. can be PWM or temperature depending on mode
-    def btn_up(self):
-        if self.control == 'HLT' or self.control == 'MASH':
-            if (self.setpoint < 220.0):
-                self.setpoint = self.setpoint + 0.5
-                print ("button down pressed. self.setpoint = %2.1f" % self.setpoint)
-        elif self.control == 'BOIL':
-            if (self.pwm < 100.0):
-                self.pwm = self.pwm + 2.0
-                print ("button up pressed. self.pwm = %2.0f" % self.pwm)
-        else:
-            pass
-        self.update_setpoint_display()
-        
-    # button DOWN. can be PWM or temperature depending on mode  
-    def btn_down(self):
+    def btn_vec(self,dt):
+        if dt>20:
+            return # seems unlikely
         if self.control == 'HLT' or self.control == 'MASH':
             if (self.setpoint > 0.0):
-                self.setpoint = self.setpoint - 0.5
-                print ("button down pressed. self.setpoint = %2.1f" % self.setpoint)
+                self.setpoint = self.setpoint + dt
+                if(self.setpoint < 0.0):
+                    self.setpoint = 0.
+                self.bc.pid_set(self.setpoint)
+                print ("self.setpoint = %2.1f" % self.setpoint)
         elif self.control == 'BOIL':
             if (self.pwm > 0.0):
-                self.pwm = self.pwm - 2.0
-                print ("button down pressed. self.pwm = %2.0f" % self.pwm)
+                self.pwm = self.pwm + dt
+                self.bc.pwm2_set(self.pwm)
+                print ("self.pwm = %2.0f" % self.pwm)
         else:
             pass
         self.update_setpoint_display()
+
+    # button UP
+    def btn_up(self):
+        self.btn_vec(0.5);
+        
+    # button DOWN
+    def btn_down(self):
+        self.btn_vec(-0.5);
         
     # HLT --> MASH --> BOIL --> COOL -->
     def btn_control(self):
         if self.control == 'HLT':
             self.update_control_text('MASH')
             self.bc.enable_heater_hlt()
-
+            self.pwm = 0.;
+            self.bc.pwm2_set(0.)
         elif self.control == 'MASH':
             self.update_control_text('BOIL')
             self.bc.enable_heater_boil()

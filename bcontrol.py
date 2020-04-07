@@ -26,7 +26,9 @@ import struct, array, time, io, fcntl
 import RPi.GPIO as GPIO
 import time
 import sys
-
+import paho.mqtt.subscribe as subscribe
+import paho.mqtt.publish as publish
+import threading
 
 class bcontrol(object):
 
@@ -39,16 +41,51 @@ class bcontrol(object):
         self.htexch = 0.
         self.mash_tun = 0.
         self.hlt = 0.
+        self.pwm1 = 0.
+        self.pwm2 = 0.
+        
+        self.rotenc_input = 0.
+        self.sub_topics = ["adc/1", "adc/2", "rotenc", "pwm1", "pwm2"]
+        
+        self.th1 = threading.Thread(target=self.thread_sub, args=())
+        self.th1.daemon = True
+        self.th1.start()
 
+    def cb(self, client, userdata, message):
+        if message.topic == "adc/1":
+            self.mash_tun = float(message.payload.decode("utf-8"))
+        elif message.topic == "adc/2":
+            self.hlt = float(message.payload.decode("utf-8"))
+        elif message.topic == "rotenc":
+            inp = float(message.payload.decode("utf-8"))
+            print ("rotenc %2.0f" % inp)
+            self.rotenc_input = self.rotenc_input + inp
+        elif message.topic == "pwm1":
+            self.pwm1 = float(message.payload.decode("utf-8"))
+        elif message.topic == "pwm2":
+            self.pwm2 = float(message.payload.decode("utf-8"))
+        else:
+            print("%s %s" % (message.topic, message.payload.decode("utf-8")))
+            
+    def thread_sub(self):
+        subscribe.callback(self.cb, self.sub_topics, qos=0, userdata=self, hostname="localhost")    
+    
+    def pid_set(self, setpoint):
+        publish.single("pid/set", "%2.2f" % setpoint, hostname="localhost")
+    def pwm2_set(self, setpoint):
+        publish.single("pwm2", "%2.2f" % setpoint, hostname="localhost")
+
+    def pid_set_sensor_source(self, sensortopic):
+        publish.single("sensortopic", sensortopic, hostname="localhost")
+        
     def enable_heater_hlt(self):
-        pass
-    
+        print("enable_heater_hlt")
+
     def enable_heater_boil(self):
-        pass
-	
-    def disable_heaters(self):
-        pass
+        print("enable_heater_boil")
     
+    def disable_heaters(self):
+        print("disable_heaters")
 
 
     # Convert PT100 resistance to temperature (Celsius)
@@ -92,4 +129,4 @@ class bcontrol(object):
         adc1_ch0 = 1.0
         adc1_ch1 = 1.1
         rtd_0 = (adc1_ch0 - 2.0 * adc1_ch1)*1000.0
-        self.mash_tun = 0 #self.ohms_to_f(rtd_0) + self.cal_mash_tun_sensor
+        #self.mash_tun = 0 #self.ohms_to_f(rtd_0) + self.cal_mash_tun_sensor
