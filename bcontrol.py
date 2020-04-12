@@ -26,9 +26,9 @@ import struct, array, time, io, fcntl
 import RPi.GPIO as GPIO
 import time
 import sys
-from MCP3427 import *
-from pid_controller import *
-
+import paho.mqtt.subscribe as subscribe
+import paho.mqtt.publish as publish
+import threading
 
 class bcontrol(object):
 
@@ -38,46 +38,59 @@ class bcontrol(object):
         self.ch2 = 27
         self.BIN = "{0:8b}"
         
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(enable, GPIO.OUT)
-        GPIO.setup(ch1, GPIO.OUT)
-        GPIO.setup(ch2, GPIO.OUT)
-
-        self.pwm_hlt = GPIO.PWM(ch1, 0.2)
-        self.pwm_hlt.start(0)
-
-        self.pwm_boil = GPIO.PWM(ch2, 0.2)
-        self.pwm_boil.start(0)
-        
-        self.hlt_pid = pwm_pid_controller(self.pwm_hlt,10.0,0.01,-10.0)
-
-        self.msleep = lambda x: time.sleep(x/1000.0)
-
-        self.cal_mash_tun_sensor = 4.5
-        self.cal_hlt_sensor = 3.0
-        self.cal_htexch_sensor = 3.0
-
         self.htexch = 0.
         self.mash_tun = 0.
         self.hlt = 0.
+        self.pwm1 = 0.
+        self.pwm2 = 0.
+        
+        self.rotenc_input = 0.
+        self.sub_topics = ["adc/1", "adc/2", "rotenc", "pwm1", "pwm2"]
+        
+        self.th1 = threading.Thread(target=self.thread_sub, args=())
+        self.th1.daemon = True
+        self.th1.start()
 
+    def cb(self, client, userdata, message):
+        if message.topic == "adc/1":
+            self.mash_tun = float(message.payload.decode("utf-8"))
+        elif message.topic == "adc/2":
+            self.hlt = float(message.payload.decode("utf-8"))
+        elif message.topic == "rotenc":
+            inp = float(message.payload.decode("utf-8"))
+            print ("rotenc %2.0f" % inp)
+            self.rotenc_input = self.rotenc_input + inp
+        elif message.topic == "pwm1":
+            self.pwm1 = float(message.payload.decode("utf-8"))
+        elif message.topic == "pwm2":
+            self.pwm2 = float(message.payload.decode("utf-8"))
+        else:
+            print("%s %s" % (message.topic, message.payload.decode("utf-8")))
+            
+    def thread_sub(self):
+        subscribe.callback(self.cb, self.sub_topics, qos=0, userdata=self, hostname="localhost")    
+    
+    def pid_set(self, setpoint):
+        publish.single("pid/set", "%2.2f" % setpoint, hostname="localhost")
+    def pwm2_set(self, setpoint):
+        setpoint = setpoint / 100.
+        if setpoint > 1.00:
+            setpoint = 1.00
+        if setpoint < 0.00:
+            setpoint = 0.0
+        publish.single("pwm2", "%2.2f" % setpoint, hostname="localhost")
+
+    def pid_set_sensor_source(self, sensortopic):
+        publish.single("sensortopic", sensortopic, hostname="localhost")
+        
     def enable_heater_hlt(self):
-        GPIO.output(self.enable, 0)
-        GPIO.output(self.ch1,1)
-        GPIO.output(self.ch2,0)
+        print("enable_heater_hlt")
 
     def enable_heater_boil(self):
-        GPIO.output(self.enable, 1)
-        GPIO.output(self.ch1,0)
-        GPIO.output(self.ch2,1)
-
-    def disable_heaters(self):
-        GPIO.output(self.enable, 0)
-        GPIO.output(self.ch1,0)
-        GPIO.output(self.ch2,0)
-        
+        print("enable_heater_boil")
     
+    def disable_heaters(self):
+        print("disable_heaters")
 
 
     # Convert PT100 resistance to temperature (Celsius)
@@ -115,67 +128,10 @@ class bcontrol(object):
         return f
         
     def init_temp_sensors(self):
-
-        self.adc1 = MCP342X(0x68)
-        self.adc1.reset()
-        self.msleep(1.0)
-        self.adc1.conversion()
-        
-        self.adc2 = MCP342X(0x6a)
-        self.adc2.reset()
-        self.msleep(1.0)
-        self.adc2.conversion()
-        
-        self.adc3 = MCP342X(0x6c)
-        self.adc3.reset()
-        self.msleep(1.0)
-        self.adc3.conversion()
-        
-        
-        self.read_temp_sensor()
+        pass        
         
     def read_temp_sensor(self):
-        self.adc1.conversion()
-        self.adc2.conversion()
-        self.adc3.conversion()
-        self.msleep(1.0)
-        try:
-            self.adc1.configure(CHANNEL_0)
-            adc1_ch0 = self.adc_to_voltage(self.adc1.read())
-            self.adc1.configure(CHANNEL_1)
-            adc1_ch1 = self.adc_to_voltage(self.adc1.read())
-            print "adc1 ch0 %3.4f" % (adc1_ch0)
-            print "adc1 ch1 %3.4f" % (adc1_ch1)
-            rtd_0 = (adc1_ch0 - 2.0 * adc1_ch1)*1000.0
-            print "rtd_0 %3.2f" % (rtd_0)
-            self.mash_tun = self.ohms_to_f(rtd_0) + self.cal_mash_tun_sensor
-        except:
-            pass
-        
-        try:
-            self.adc2.configure(CHANNEL_0)
-            adc2_ch0 = self.adc_to_voltage(self.adc2.read())
-            self.adc2.configure(CHANNEL_1)
-            adc2_ch1 = self.adc_to_voltage(self.adc2.read())
-            print "adc2 ch0 %3.4f" % (adc2_ch0)
-            print "adc2 ch1 %3.4f" % (adc2_ch1)
-            rtd_1 = (adc2_ch0 - 2.0 * adc2_ch1)*1000.0
-            print "rtd_1 %3.2f" % (rtd_1)
-            self.hlt = self.ohms_to_f(rtd_1) + self.cal_hlt_sensor
-        except:
-            pass
-        
-        try:
-            self.adc3.configure(CHANNEL_0)
-            adc3_ch0 = self.adc_to_voltage(self.adc3.read())
-            self.adc3.configure(CHANNEL_1)
-            adc3_ch1 = self.adc_to_voltage(self.adc3.read())
-            print "adc3 ch0 %3.4f" % (adc3_ch0)
-            print "adc3 ch1 %3.4f" % (adc3_ch1)
-            rtd_2 = (adc3_ch0 - 2.0 * adc3_ch1)*1000.0
-            print "rtd_2 %3.2f" % (rtd_2)
-            self.htexch = self.ohms_to_f(rtd_2) + self.cal_htexch_sensor
-        except:
-            pass
-            
-        print "HLT: %3.1f MASH: %3.1f HTEXCH: %3.1f " % (self.hlt, self.mash_tun, self.htexch)
+        adc1_ch0 = 1.0
+        adc1_ch1 = 1.1
+        rtd_0 = (adc1_ch0 - 2.0 * adc1_ch1)*1000.0
+        #self.mash_tun = 0 #self.ohms_to_f(rtd_0) + self.cal_mash_tun_sensor

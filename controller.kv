@@ -21,66 +21,93 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
+<RightButton@Button>:
+    text_size: self.size
+    font_size: '25sp'
+    markup: True
+    
+<NormalLabel@Label>:
+    background_color: 0.1, 0.1, 0.1
+    font_size: '30sp'
+    
 <Controller>:
 	ctrl: tc
-	
-    BoxLayout:
-        orientation: 'horizontal'
-		BoxLayout:
-			id: tc		
-			orientation: 'vertical'
-			BoxLayout:
-				orientation: 'horizontal'
-				Label:
-					text: root.temp_text
-					markup: True
-				Label:
-					text: '[b][size=30]TEMP'
-					markup: True
-			BoxLayout:
-				orientation: 'horizontal'
-				Label:
-					id: label_set
-					text: root.setpoint_text
-					markup: True
-				Label:
-					text: '[b][size=30]SET'
-					markup: True
-			Button:
-                id: b_control_button
-				text: root.control_text
-				markup: True
-                on_press: root.btn_control()
-			BoxLayout:
-				orientation: 'horizontal'
-				Button:
-					id: btn_up
-					text: '[b][size=30]Up'
-					markup: True
-					on_press: root.btn_up()
-				Button:
-					id: btn_down
-					text: '[b][size=30]Down'
-					markup: True
-					on_press: root.btn_down()
+	PageLayout:
+        BoxLayout:
+            orientation: 'horizontal'
+            
+            # Left side column
+            BoxLayout:
+                id: tc		
+                orientation: 'vertical'
+                BoxLayout:
+                    orientation: 'horizontal'
+                    Label:
+                        text: root.temp_text
+                        markup: True
+                    Label:
+                        text: '[b][size=30]TEMP'
+                        markup: True
+                BoxLayout:
+                    orientation: 'horizontal'
+                    Label:
+                        id: label_set
+                        text: root.setpoint_text
+                        markup: True
+                    Label:
+                        text: '[b][size=30]SET'
+                        markup: True
+                Button:
+                    id: b_control_button
+                    text: root.control_text
+                    markup: True
+                    on_press: root.btn_control()
+                BoxLayout:
+                    orientation: 'horizontal'
+                    Button:
+                        id: btn_up
+                        text: '[b][size=30]Up'
+                        markup: True
+                        on_press: root.btn_up()
+                    Button:
+                        id: btn_down
+                        text: '[b][size=30]Down'
+                        markup: True
+                        on_press: root.btn_down()
+        
+            # Right side column
+            BoxLayout:
+                orientation: 'vertical'
+                RightButton:
+                    id: b_e
+                    text: root.enable_text
+                    on_press: root.btn_enable()
+                RightButton:
+                    text: root.hlt_temp_text
+                    on_press: root.btn_hlt_modal()
+                RightButton:
+                    text: root.mash_temp_text
+                    on_press: root.btn_mash_modal()
+                RightButton:
+                    text: root.hlt_pwm_text
+                    on_press: root.btn_hlt_control_modal()
+                RightButton:
+                    text: root.boil_pwm_text
+                    on_press: root.btn_boil_control_modal()
+        BoxLayout:
+            orientation: 'horizontal'
+            BoxLayout:
+                orientation: 'vertical'
+                NormalLabel:
+                    text: '[b][size=30]Up'
+                NormalLabel:
+                    text: '[b][size=30]Down'
+            BoxLayout:
+                orientation: 'vertical'
+                NormalLabel:
+                    text: '[b][size=30]Left'
+                NormalLabel:
+                    text: '[b][size=30]Right'
 
-
-		BoxLayout:
-			orientation: 'vertical'
-			Button:
-				id: b_e
-				text: root.enable_text
-				markup: True
-				on_press: root.btn_enable()
-            Label:
-                text: root.hlt_temp_text
-                markup: True
-            Label:
-                text: root.mash_temp_text
-                markup: True
-            Label:
-                text: root.hlt_pwm_text
-                markup: True
 
 
