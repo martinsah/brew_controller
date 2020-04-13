@@ -18,7 +18,7 @@ $ sudo raspi-config
 $ sudo apt install mosquitto
 $ sudo systemctl enable mosquitto.service
 $ sudo systemctl start mosquitto.service
-$ sudo apt-get install build-essential gcc make cmake cmake-gui cmake-curses-gui paho
+$ sudo apt-get install build-essential gcc make cmake 
 ```
 
 2. Install [paho-mqtt-c](https://github.com/eclipse/paho.mqtt.c)
